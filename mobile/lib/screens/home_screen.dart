@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white50)),
+              child: const Text("Cancel", style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
@@ -225,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white50)),
+              child: const Text("Cancel", style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),

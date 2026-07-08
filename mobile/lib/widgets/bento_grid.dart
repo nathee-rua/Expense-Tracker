@@ -118,7 +118,7 @@ class BentoGrid extends StatelessWidget {
                         Text(
                           "TOTAL BUDGET POOL",
                           style: TextStyle(
-                            color: Colors.white50,
+                            color: Colors.white54,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.2,
@@ -147,7 +147,7 @@ class BentoGrid extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 "฿${totalSpent.toStringAsFixed(2)}",
-                                style: const TextStyle(color: Colors.white87, fontSize: 15, fontWeight: FontWeight.bold),
+                                style: const TextStyle(color: Color(0xDEFFFFFF), fontSize: 15, fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),

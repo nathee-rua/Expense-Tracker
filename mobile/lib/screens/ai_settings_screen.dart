@@ -258,7 +258,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
             Text(
               p.name,
               style: TextStyle(
-                color: isActive ? Colors.white : Colors.white90,
+                color: isActive ? Colors.white : Colors.white70,
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
               ),
@@ -287,7 +287,7 @@ class _AISettingsScreenState extends State<AISettingsScreen> {
               style: const TextStyle(color: Colors.white, fontSize: 13),
               decoration: InputDecoration(
                 labelText: "${p.name} API Key",
-                labelStyle: const TextStyle(color: Colors.white50, fontSize: 12),
+                labelStyle: const TextStyle(color: Colors.white60, fontSize: 12),
                 enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
                 focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
                 suffixIcon: IconButton(

@@ -39,14 +39,14 @@ class PremiumExpenseTrackerApp extends StatelessWidget {
           onBackground: Colors.white,
           onSurface: Colors.white70,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: const Color(0xFF1E1E2C),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           elevation: 0,
         ),
-        dialogTheme: DialogTheme(
+        dialogTheme: DialogThemeData(
           backgroundColor: const Color(0xFF1E1E2C),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -65,7 +65,7 @@ class PremiumExpenseTrackerApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
           bodyLarge: TextStyle(
-            color: Colors.white87,
+            color: Color(0xDEFFFFFF),
             fontSize: 15,
           ),
           bodyMedium: TextStyle(

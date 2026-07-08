@@ -264,7 +264,7 @@ class MainScannerColumn extends StatelessWidget {
           if (showOcrEditor) ...[
             const Text(
               "Extracted Offline Thai Text",
-              style: TextStyle(color: Colors.white80, fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Container(
@@ -290,7 +290,7 @@ class MainScannerColumn extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               statusText,
-              style: const TextStyle(color: Colors.white50, fontSize: 11),
+              style: const TextStyle(color: Colors.white60, fontSize: 11),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
