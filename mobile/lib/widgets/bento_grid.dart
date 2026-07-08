@@ -3,41 +3,53 @@ import 'package:flutter/material.dart';
 class BentoGrid extends StatelessWidget {
   final double totalBudget;
   final double totalSpent;
+  final double dailyAverage;
+  final double projectedSpent;
   final String activeProvider;
   final bool isOcrReady;
   final VoidCallback onSelectImage;
   final VoidCallback onChangeProvider;
   final VoidCallback onChangeBudget;
+  final VoidCallback onAddManual;
+  final VoidCallback onResetAll;
+  final VoidCallback onExportData;
   final Widget chartWidget;
   final Widget sankeyWidget;
+  final Widget expenseListWidget;
 
   const BentoGrid({
     Key? key,
     required this.totalBudget,
     required this.totalSpent,
+    required this.dailyAverage,
+    required this.projectedSpent,
     required this.activeProvider,
     required this.isOcrReady,
     required this.onSelectImage,
     required this.onChangeProvider,
     required this.onChangeBudget,
+    required this.onAddManual,
+    required this.onResetAll,
+    required this.onExportData,
     required this.chartWidget,
     required this.sankeyWidget,
+    required this.expenseListWidget,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final balance = totalBudget - totalSpent;
     final balanceColor = balance >= 0 ? const Color(0xFF2ECC71) : const Color(0xFFFF5E62);
+    final isOverBudget = projectedSpent > totalBudget;
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        key: const ValueKey('bento_scroll_view'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome Header
+            // Welcome Header & Quick Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -64,7 +76,7 @@ class BentoGrid extends StatelessWidget {
                     ),
                   ],
                 ),
-                // Camera Action Button
+                // Camera Scanner Action Button
                 GestureDetector(
                   onTap: onSelectImage,
                   child: Container(
@@ -89,9 +101,36 @@ class BentoGrid extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // Row 1: Big Budget card (2x1 equivalent)
+            // Quick Actions Bar (Manual Add, Export, Reset)
+            Row(
+              children: [
+                _buildActionButton(
+                  icon: Icons.add_circle_outline,
+                  label: "Manual Add",
+                  color: const Color(0xFF00C6FF),
+                  onTap: onAddManual,
+                ),
+                const SizedBox(width: 10),
+                _buildActionButton(
+                  icon: Icons.ios_share,
+                  label: "Export CSV",
+                  color: const Color(0xFF2ECC71),
+                  onTap: onExportData,
+                ),
+                const SizedBox(width: 10),
+                _buildActionButton(
+                  icon: Icons.restart_alt,
+                  label: "Reset Data",
+                  color: const Color(0xFFFF5E62),
+                  onTap: onResetAll,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Row 1: Big Budget card (2x1 equivalent) with Trend forecasting
             GestureDetector(
               onTap: onChangeBudget,
               child: Container(
@@ -171,6 +210,46 @@ class BentoGrid extends StatelessWidget {
                             ],
                           ),
                         ),
+                      ],
+                    ),
+
+                    // Divider and Forecasting section
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                      child: Divider(color: Colors.white10, height: 1),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.analytics_outlined, color: Colors.white38, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            "Daily Avg: ฿${dailyAverage.toStringAsFixed(1)} • Projected EOM: ฿${projectedSpent.toStringAsFixed(1)}",
+                            style: TextStyle(
+                              color: isOverBudget ? const Color(0xFFFF5E62) : Colors.white54,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        if (isOverBudget)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF5E62).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: const [
+                                Icon(Icons.warning_amber_rounded, color: Color(0xFFFF5E62), size: 10),
+                                SizedBox(width: 2),
+                                Text(
+                                  "OVER BUDGET RISK",
+                                  style: TextStyle(color: Color(0xFFFF5E62), fontSize: 8, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -281,7 +360,43 @@ class BentoGrid extends StatelessWidget {
               height: 220,
               child: chartWidget,
             ),
+            const SizedBox(height: 16),
+
+            // Row 5: Scrollable Transaction List
+            expenseListWidget,
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
         ),
       ),
     );

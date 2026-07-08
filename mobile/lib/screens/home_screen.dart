@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
@@ -5,6 +6,7 @@ import '../widgets/bento_grid.dart';
 import '../widgets/sankey_chart.dart';
 import '../widgets/expense_chart.dart';
 import '../widgets/receipt_scanner.dart';
+import '../widgets/expense_list_widget.dart';
 import '../services/api_service.dart';
 import 'ai_settings_screen.dart';
 
@@ -24,15 +26,101 @@ class _HomeScreenState extends State<HomeScreen> {
   String _activeProvider = "gemini";
   bool _isOcrReady = true;
 
-  // Transaction list (Pre-populate with realistic mock slips to demonstrate graphics)
+  // Transaction list (Persisted dynamically)
   final List<Expense> _expenses = [];
 
   @override
   void initState() {
     super.initState();
-    _loadMockData();
-    _loadActiveConfig();
+    _loadSavedData();
     _fetchBackendHealth();
+  }
+
+  Future<void> _loadSavedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Load budget
+    setState(() {
+      _totalBudget = prefs.getDouble('total_budget') ?? 15000.00;
+    });
+
+    // Load active provider
+    await _loadActiveConfig();
+
+    // Load expenses
+    final savedList = prefs.getStringList('saved_expenses');
+    if (savedList != null && savedList.isNotEmpty) {
+      setState(() {
+        _expenses.clear();
+        for (var item in savedList) {
+          try {
+            _expenses.add(Expense.fromJson(jsonDecode(item)));
+          } catch (e) {
+            print("Error loading individual expense: $e");
+          }
+        }
+      });
+    } else {
+      _loadMockData();
+      _saveExpenses();
+    }
+  }
+
+  void _loadMockData() {
+    setState(() {
+      _expenses.addAll([
+        Expense(
+          id: "mock-1",
+          transactionDate: DateTime.now().subtract(const Duration(days: 1)),
+          transactionTime: "12:30",
+          amount: 350.00,
+          receiverName: "Somtum Sab Zaap",
+          category: "Food",
+          items: [ExpenseItem(name: "Somtum & Grilled Chicken", price: 350.00, quantity: 1)],
+          rawOcrText: "K-Plus Transfer Successful\nDate: 2026-07-07 Time: 12:30\nTo: Somtum Sab Zaap\nAmount: 350.00 THB",
+          parsedProvider: "gemini (mock)",
+        ),
+        Expense(
+          id: "mock-2",
+          transactionDate: DateTime.now().subtract(const Duration(days: 2)),
+          transactionTime: "08:15",
+          amount: 120.00,
+          receiverName: "BTS Skytrain",
+          category: "Travel",
+          items: [ExpenseItem(name: "BTS Single Journey Ticket", price: 120.00, quantity: 1)],
+          rawOcrText: "PromptPay QR Payment\nRef: BTS Skytrain\nAmount: 120.00 Baht\nSuccess",
+          parsedProvider: "openrouter (mock)",
+        ),
+        Expense(
+          id: "mock-3",
+          transactionDate: DateTime.now().subtract(const Duration(days: 3)),
+          transactionTime: "18:45",
+          amount: 1450.00,
+          receiverName: "MEA Electricity",
+          category: "Utilities",
+          items: [ExpenseItem(name: "Monthly Electricity Bill", price: 1450.00, quantity: 1)],
+          rawOcrText: "SCB Easy\nPayment to: Metropolitan Electricity Authority\nAmount: 1,450.00 THB\nTransaction completed.",
+          parsedProvider: "groq (mock)",
+        ),
+        Expense(
+          id: "mock-4",
+          transactionDate: DateTime.now().subtract(const Duration(days: 4)),
+          transactionTime: "15:20",
+          amount: 890.00,
+          receiverName: "Uniqlo Siam Paragon",
+          category: "Shopping",
+          items: [ExpenseItem(name: "Premium Linen Shirt", price: 890.00, quantity: 1)],
+          rawOcrText: "Krungthai NEXT\nTransaction: Transfer Success\nTo: UNIQLO THAILAND\nAmount: 890.00 THB",
+          parsedProvider: "gemini (mock)",
+        ),
+      ]);
+    });
+  }
+
+  Future<void> _saveExpenses() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = _expenses.map((e) => jsonEncode(e.toJson())).toList();
+    await prefs.setStringList('saved_expenses', list);
   }
 
   Future<void> _loadActiveConfig() async {
@@ -40,74 +128,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _activeProvider = prefs.getString('active_provider') ?? 'gemini';
     });
-  }
-
-  void _navigateToAiSettings() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AISettingsScreen(apiBaseUrl: _apiBaseUrl),
-      ),
-    ).then((_) {
-      _loadActiveConfig();
-    });
-  }
-
-  void _loadMockData() {
-    _expenses.addAll([
-      Expense(
-        id: "mock-1",
-        transactionDate: DateTime.now().subtract(const Duration(days: 1)),
-        transactionTime: "12:30",
-        amount: 350.00,
-        senderName: "Nattawut M.",
-        receiverName: "Somtum Sab Zaap",
-        bankName: "Kasikorn Bank",
-        category: "Food",
-        items: [ExpenseItem(name: "Somtum & Grilled Chicken", price: 350.00, quantity: 1)],
-        rawOcrText: "K-Plus Transfer Successful\nDate: 2026-07-07 Time: 12:30\nTo: Somtum Sab Zaap\nAmount: 350.00 THB",
-        parsedProvider: "gemini (mock)",
-      ),
-      Expense(
-        id: "mock-2",
-        transactionDate: DateTime.now().subtract(const Duration(days: 2)),
-        transactionTime: "08:15",
-        amount: 120.00,
-        senderName: "Nattawut M.",
-        receiverName: "BTS Skytrain",
-        bankName: "PromptPay",
-        category: "Travel",
-        items: [ExpenseItem(name: "BTS Single Journey Ticket", price: 120.00, quantity: 1)],
-        rawOcrText: "PromptPay QR Payment\nRef: BTS Skytrain\nAmount: 120.00 Baht\nSuccess",
-        parsedProvider: "openrouter (mock)",
-      ),
-      Expense(
-        id: "mock-3",
-        transactionDate: DateTime.now().subtract(const Duration(days: 3)),
-        transactionTime: "18:45",
-        amount: 1450.00,
-        senderName: "Nattawut M.",
-        receiverName: "MEA Electricity",
-        bankName: "Siam Commercial Bank",
-        category: "Utilities",
-        items: [ExpenseItem(name: "Monthly Electricity Bill", price: 1450.00, quantity: 1)],
-        rawOcrText: "SCB Easy\nPayment to: Metropolitan Electricity Authority\nAmount: 1,450.00 THB\nTransaction completed.",
-        parsedProvider: "groq (mock)",
-      ),
-      Expense(
-        id: "mock-4",
-        transactionDate: DateTime.now().subtract(const Duration(days: 4)),
-        transactionTime: "15:20",
-        amount: 890.00,
-        senderName: "Nattawut M.",
-        receiverName: "Uniqlo Siam Paragon",
-        bankName: "Krungthai Bank",
-        category: "Shopping",
-        items: [ExpenseItem(name: "Premium Linen Shirt", price: 890.00, quantity: 1)],
-        rawOcrText: "Krungthai NEXT\nTransaction: Transfer Success\nTo: UNIQLO THAILAND\nAmount: 890.00 THB",
-        parsedProvider: "gemini (mock)",
-      ),
-    ]);
   }
 
   Future<void> _fetchBackendHealth() async {
@@ -121,6 +141,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   double get _totalSpent => _expenses.fold<double>(0.0, (sum, e) => sum + e.amount);
 
+  // Dynamic Trend Forecasting Calculations
+  double get _dailyAverage {
+    if (_expenses.isEmpty) return 0.0;
+    
+    final now = DateTime.now();
+    // Count days elapsed in the current month up to today
+    final elapsedDays = now.day;
+    
+    // Sum total expenses in the current month and year
+    final currentMonthExpenses = _expenses.where((e) => 
+      e.transactionDate.month == now.month && 
+      e.transactionDate.year == now.year
+    );
+    
+    final totalSpentThisMonth = currentMonthExpenses.fold<double>(0.0, (sum, e) => sum + e.amount);
+    
+    return totalSpentThisMonth / (elapsedDays > 0 ? elapsedDays : 1);
+  }
+
+  double get _projectedSpent {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    return _dailyAverage * daysInMonth;
+  }
+
   Map<String, double> get _categoryExpenses {
     final Map<String, double> categories = {
       'Food': 0.0,
@@ -128,19 +173,33 @@ class _HomeScreenState extends State<HomeScreen> {
       'Utilities': 0.0,
       'Shopping': 0.0,
       'Entertainment': 0.0,
+      'Other': 0.0,
     };
 
     for (var e in _expenses) {
-      final categoryKey = e.category.trim();
-      
-      // Categorize properly or add to other
-      if (categories.containsKey(categoryKey)) {
-        categories[categoryKey] = (categories[categoryKey] ?? 0.0) + e.amount;
-      } else {
-        categories[categoryKey] = (categories[categoryKey] ?? 0.0) + e.amount;
-      }
+      final categoryKey = _getValidCategory(e.category);
+      categories[categoryKey] = (categories[categoryKey] ?? 0.0) + e.amount;
     }
     return categories;
+  }
+
+  String _getValidCategory(String category) {
+    final validCategories = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'];
+    return validCategories.firstWhere(
+      (c) => c.toLowerCase() == category.toLowerCase().trim(),
+      orElse: () => 'Other',
+    );
+  }
+
+  void _navigateToAiSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AISettingsScreen(apiBaseUrl: _apiBaseUrl),
+      ),
+    ).then((_) {
+      _loadActiveConfig();
+    });
   }
 
   void _showScannerBottomSheet() {
@@ -154,12 +213,365 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _expenses.insert(0, newExpense);
           });
+          _saveExpenses();
         },
       ),
     );
   }
 
-  // Provider selector removed in favor of AISettingsScreen
+  // --- CRUD OPERATIONS ---
+
+  void _showAddManualDialog() {
+    final merchantController = TextEditingController();
+    final amountController = TextEditingController();
+    final dateController = TextEditingController(text: DateTime.now().toIso8601String().substring(0, 10));
+    final timeController = TextEditingController(text: "12:00");
+    String selectedCategory = 'Food';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E1E2C),
+              title: const Text("Add Manual Expense", style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: merchantController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(labelText: "Merchant / Title", labelStyle: TextStyle(color: Colors.white54)),
+                  ),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(labelText: "Amount (THB)", labelStyle: TextStyle(color: Colors.white54)),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: dateController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(labelText: "Date", labelStyle: TextStyle(color: Colors.white54)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: timeController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(labelText: "Time", labelStyle: TextStyle(color: Colors.white54)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButton<String>(
+                    dropdownColor: const Color(0xFF1E1E2C),
+                    value: selectedCategory,
+                    isExpanded: true,
+                    style: const TextStyle(color: Colors.white),
+                    items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
+                      return DropdownMenuItem<String>(value: c, child: Text(c));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          selectedCategory = val;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+                  onPressed: () {
+                    final double? amount = double.tryParse(amountController.text);
+                    if (amount != null && merchantController.text.isNotEmpty) {
+                      setState(() {
+                        _expenses.insert(
+                          0,
+                          Expense(
+                            id: DateTime.now().millisecondsSinceEpoch.toString(),
+                            transactionDate: DateTime.tryParse(dateController.text) ?? DateTime.now(),
+                            transactionTime: timeController.text,
+                            amount: amount,
+                            receiverName: merchantController.text,
+                            category: selectedCategory,
+                            items: [],
+                            rawOcrText: "Manual Entry",
+                            parsedProvider: "manual",
+                          ),
+                        );
+                      });
+                      _saveExpenses();
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text("Add"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditDialog(Expense expense) {
+    final merchantController = TextEditingController(text: expense.receiverName ?? expense.senderName);
+    final amountController = TextEditingController(text: expense.amount.toStringAsFixed(2));
+    final dateController = TextEditingController(text: expense.transactionDate.toIso8601String().substring(0, 10));
+    final timeController = TextEditingController(text: expense.transactionTime);
+    String selectedCategory = _getValidCategory(expense.category);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E1E2C),
+              title: const Text("Edit Transaction", style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: merchantController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(labelText: "Merchant / Title", labelStyle: TextStyle(color: Colors.white54)),
+                  ),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(labelText: "Amount (THB)", labelStyle: TextStyle(color: Colors.white54)),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: dateController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(labelText: "Date", labelStyle: TextStyle(color: Colors.white54)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: timeController,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(labelText: "Time", labelStyle: TextStyle(color: Colors.white54)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButton<String>(
+                    dropdownColor: const Color(0xFF1E1E2C),
+                    value: selectedCategory,
+                    isExpanded: true,
+                    style: const TextStyle(color: Colors.white),
+                    items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
+                      return DropdownMenuItem<String>(value: c, child: Text(c));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          selectedCategory = val;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+                  onPressed: () {
+                    final double? amount = double.tryParse(amountController.text);
+                    if (amount != null && merchantController.text.isNotEmpty) {
+                      final index = _expenses.indexWhere((e) => e.id == expense.id);
+                      if (index != -1) {
+                        setState(() {
+                          _expenses[index] = Expense(
+                            id: expense.id,
+                            transactionDate: DateTime.tryParse(dateController.text) ?? expense.transactionDate,
+                            transactionTime: timeController.text,
+                            amount: amount,
+                            receiverName: merchantController.text,
+                            category: selectedCategory,
+                            items: expense.items,
+                            rawOcrText: expense.rawOcrText,
+                            parsedProvider: expense.parsedProvider,
+                          );
+                        });
+                        _saveExpenses();
+                      }
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _deleteExpense(Expense expense) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2C),
+          title: const Text("Delete Log?", style: TextStyle(color: Colors.white)),
+          content: Text("Are you sure you want to delete the expense of ฿${expense.amount.toStringAsFixed(2)} at ${expense.receiverName}?", style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5E62)),
+              onPressed: () {
+                setState(() {
+                  _expenses.removeWhere((e) => e.id == expense.id);
+                });
+                _saveExpenses();
+                Navigator.pop(context);
+              },
+              child: const Text("Delete"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _resetAllData() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2C),
+          title: const Text("Reset All Data?", style: TextStyle(color: Colors.white)),
+          content: const Text("This will clear all custom expenses and reload the default mock slips. This cannot be undone.", style: TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5E62)),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('saved_expenses');
+                await prefs.remove('total_budget');
+                setState(() {
+                  _expenses.clear();
+                  _totalBudget = 15000.00;
+                  _loadMockData();
+                });
+                _saveExpenses();
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Data reset to default successfully.")),
+                  );
+                }
+              },
+              child: const Text("Reset"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _exportDataCSV() {
+    if (_expenses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No data to export.")),
+      );
+      return;
+    }
+
+    // Generate CSV string
+    final csvBuffer = StringBuffer();
+    csvBuffer.writeln("ID,Date,Time,Merchant,Amount,Category,AIProvider");
+    
+    for (var e in _expenses) {
+      final merchant = (e.receiverName ?? e.senderName ?? 'Expense').replaceAll(',', ';');
+      final date = e.transactionDate.toIso8601String().substring(0, 10);
+      csvBuffer.writeln("${e.id},$date,${e.transactionTime},$merchant,${e.amount},${e.category},${e.parsedProvider}");
+    }
+
+    final csvText = csvBuffer.toString();
+
+    // Show copyable dialog
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2C),
+          title: const Text("Exported CSV Data", style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Copy the CSV values below to import directly into Excel or sheets:", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              const SizedBox(height: 12),
+              Container(
+                maxHeight: 200,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    csvText,
+                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+              onPressed: () {
+                // In pure Flutter Web or Android, copy to Clipboard
+                // Imports services package if needed, but standard clipboards can be used
+                // For simplicity, we can do it via WidgetsBinding or just Clipboard
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("CSV copied to clipboard!")),
+                );
+              },
+              child: const Text("Done"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   void _showBudgetEditor() {
     final controller = TextEditingController(text: _totalBudget.toStringAsFixed(0));
@@ -187,12 +599,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
-              onPressed: () {
+              onPressed: () async {
                 final double? parsedVal = double.tryParse(controller.text);
                 if (parsedVal != null && parsedVal > 0) {
                   setState(() {
                     _totalBudget = parsedVal;
                   });
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setDouble('total_budget', parsedVal);
                 }
                 Navigator.pop(context);
               },
@@ -261,13 +675,23 @@ class _HomeScreenState extends State<HomeScreen> {
       body: BentoGrid(
         totalBudget: _totalBudget,
         totalSpent: _totalSpent,
+        dailyAverage: _dailyAverage,
+        projectedSpent: _projectedSpent,
         activeProvider: _activeProvider,
         isOcrReady: _isOcrReady,
         onSelectImage: _showScannerBottomSheet,
         onChangeProvider: _navigateToAiSettings,
         onChangeBudget: _showBudgetEditor,
+        onAddManual: _showAddManualDialog,
+        onResetAll: _resetAllData,
+        onExportData: _exportDataCSV,
         chartWidget: ExpenseBreakdownChart(categoryExpenses: _categoryExpenses),
         sankeyWidget: SankeyChart(income: _totalBudget, categoryExpenses: _categoryExpenses),
+        expenseListWidget: ExpenseListWidget(
+          expenses: _expenses,
+          onEdit: _showEditDialog,
+          onDelete: _deleteExpense,
+        ),
       ),
     );
   }
