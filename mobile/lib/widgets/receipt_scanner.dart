@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ocr_service.dart';
 import '../services/api_service.dart';
 import '../models/expense.dart';
@@ -93,10 +94,18 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
         dataPayload = _ocrTextController.text;
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      final provider = prefs.getString('active_provider') ?? 'gemini';
+      final model = prefs.getString('active_model') ?? 'gemini-1.5-flash';
+      final apiKey = prefs.getString('key_$provider') ?? '';
+
       final result = await _apiService.parseReceipt(
         data: dataPayload,
         isImage: sendAsImage,
         baseUrl: widget.apiBaseUrl,
+        provider: provider,
+        model: model,
+        apiKey: apiKey.isNotEmpty ? apiKey : null,
       );
 
       if (result['success'] == true) {
