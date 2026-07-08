@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,6 +27,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
   final OcrService _ocrService = OcrService();
   final ApiService _apiService = ApiService();
 
+  XFile? _pickedFile;
   File? _imageFile;
   String _statusText = '';
   bool _isLoading = false;
@@ -52,10 +54,24 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
       if (pickedFile == null) return;
 
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _pickedFile = pickedFile;
+        _imageFile = kIsWeb ? null : File(pickedFile.path);
         _isLoading = true;
-        _statusText = "Performing offline Thai OCR...";
+        _statusText = kIsWeb
+            ? "Local OCR not supported on Web. Preparing image upload..."
+            : "Performing offline Thai OCR...";
       });
+
+      if (kIsWeb) {
+        setState(() {
+          _extractedOcrText = "Web Platform: Local offline OCR is skipped. Please select 'Submit Full Image' to parse using cloud AI.";
+          _ocrTextController.text = _extractedOcrText;
+          _statusText = "Local OCR skipped on Web. Please choose 'Submit Full Image'.";
+          _isLoading = false;
+          _showOcrEditor = true;
+        });
+        return;
+      }
 
       // Step 1: Run local OCR
       final ocrText = await _ocrService.recognizeText(_imageFile!);
@@ -63,7 +79,11 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
       setState(() {
         _extractedOcrText = ocrText;
         _ocrTextController.text = ocrText;
-        _statusText = "OCR complete. Review the text below or proceed.";
+        if (ocrText.contains("MissingPluginException") || ocrText.contains("OCR recognition error")) {
+          _statusText = "Local OCR not supported in this environment. Please choose 'Submit Full Image'.";
+        } else {
+          _statusText = "OCR complete. Review the text below or proceed.";
+        }
         _isLoading = false;
         _showOcrEditor = true;
       });
@@ -76,7 +96,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
   }
 
   Future<void> _submitToServer(bool sendAsImage) async {
-    if (_imageFile == null && !sendAsImage) return;
+    if (_pickedFile == null && !sendAsImage) return;
 
     setState(() {
       _isLoading = true;
@@ -87,8 +107,8 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
 
     try {
       String dataPayload = '';
-      if (sendAsImage && _imageFile != null) {
-        final bytes = await _imageFile!.readAsBytes();
+      if (sendAsImage && _pickedFile != null) {
+        final bytes = await _pickedFile!.readAsBytes();
         dataPayload = base64Encode(bytes);
       } else {
         dataPayload = _ocrTextController.text;
