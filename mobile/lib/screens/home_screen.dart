@@ -257,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pickAndScanPdf() async {
     try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
       );
@@ -324,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Container(
                     width: double.maxFinite,
-                    maxHeight: 250,
+                    constraints: const BoxConstraints(maxHeight: 250),
                     child: ListView.builder(
                       shrinkWrap: true,
                       itemCount: _categories.length,
