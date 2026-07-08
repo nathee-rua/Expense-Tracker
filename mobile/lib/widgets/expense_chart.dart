@@ -32,7 +32,7 @@ class _ExpenseBreakdownChartState extends State<ExpenseBreakdownChart> {
         ),
         child: const Center(
           child: Text(
-            "No expense data available.\nScan a receipt to get started!",
+            "ไม่มีข้อมูลรายการใช้จ่าย\nทดลองแสกนสลิปเพื่อเริ่มต้นใช้งาน!",
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white60, fontSize: 14),
           ),
@@ -53,7 +53,7 @@ class _ExpenseBreakdownChartState extends State<ExpenseBreakdownChart> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Category Breakdown",
+            "สัดส่วนรายจ่ายรายหมวดหมู่",
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -132,9 +132,9 @@ class _ExpenseBreakdownChartState extends State<ExpenseBreakdownChart> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Expanded(
+                             Expanded(
                               child: Text(
-                                entry.key,
+                                _translateCategory(entry.key),
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Colors.white70,
@@ -163,6 +163,18 @@ class _ExpenseBreakdownChartState extends State<ExpenseBreakdownChart> {
         ],
       ),
     );
+  }
+
+  String _translateCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'food': return 'อาหาร';
+      case 'travel': return 'การเดินทาง';
+      case 'utilities': return 'สาธารณูปโภค';
+      case 'shopping': return 'ช็อปปิ้ง';
+      case 'entertainment': return 'ความบันเทิง';
+      case 'other': return 'อื่นๆ';
+      default: return category;
+    }
   }
 
   Color _getCategoryColor(String category) {

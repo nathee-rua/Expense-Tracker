@@ -25,7 +25,7 @@ class ExpenseListWidget extends StatelessWidget {
         ),
         child: const Center(
           child: Text(
-            "No expenses recorded yet.",
+            "ยังไม่มีการบันทึกรายการใช้จ่าย",
             style: TextStyle(color: Colors.white38, fontSize: 13),
           ),
         ),
@@ -46,7 +46,7 @@ class ExpenseListWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                "Recent Transactions",
+                "ประวัติรายการล่าสุด",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -55,7 +55,7 @@ class ExpenseListWidget extends StatelessWidget {
                 ),
               ),
               Text(
-                "${expenses.length} logs",
+                "${expenses.length} รายการ",
                 style: const TextStyle(color: Colors.white38, fontSize: 12),
               ),
             ],

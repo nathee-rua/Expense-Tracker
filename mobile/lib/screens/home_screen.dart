@@ -202,13 +202,14 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _showScannerBottomSheet() {
+  void _showScannerBottomSheet([XFile? file]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ReceiptScannerBottomSheet(
         apiBaseUrl: _apiBaseUrl,
+        initialFile: file,
         onExpenseParsed: (newExpense) {
           setState(() {
             _expenses.insert(0, newExpense);
@@ -217,6 +218,38 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
+  }
+
+  Future<void> _pickAndScanImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+      if (pickedFile != null) {
+        _showScannerBottomSheet(pickedFile);
+      }
+    } catch (e) {
+      print("Error picking image: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("เกิดข้อผิดพลาดในการเลือกรูปภาพ: $e")),
+      );
+    }
+  }
+
+  String translateCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'food': return 'อาหาร';
+      case 'travel': return 'การเดินทาง';
+      case 'utilities': return 'สาธารณูปโภค';
+      case 'shopping': return 'ช็อปปิ้ง';
+      case 'entertainment': return 'ความบันเทิง';
+      case 'other': return 'อื่นๆ';
+      default: return category;
+    }
   }
 
   // --- CRUD OPERATIONS ---
@@ -235,20 +268,20 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E2C),
-              title: const Text("Add Manual Expense", style: TextStyle(color: Colors.white)),
+              title: const Text("เพิ่มรายการใช้จ่ายด้วยตัวเอง", style: TextStyle(color: Colors.white)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: merchantController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: "Merchant / Title", labelStyle: TextStyle(color: Colors.white54)),
+                    decoration: const InputDecoration(labelText: "ร้านค้า / รายการ", labelStyle: TextStyle(color: Colors.white54)),
                   ),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: "Amount (THB)", labelStyle: TextStyle(color: Colors.white54)),
+                    decoration: const InputDecoration(labelText: "จำนวนเงิน (บาท)", labelStyle: TextStyle(color: Colors.white54)),
                   ),
                   Row(
                     children: [
@@ -256,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: TextField(
                           controller: dateController,
                           style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(labelText: "Date", labelStyle: TextStyle(color: Colors.white54)),
+                          decoration: const InputDecoration(labelText: "วันที่", labelStyle: TextStyle(color: Colors.white54)),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -264,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: TextField(
                           controller: timeController,
                           style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(labelText: "Time", labelStyle: TextStyle(color: Colors.white54)),
+                          decoration: const InputDecoration(labelText: "เวลา", labelStyle: TextStyle(color: Colors.white54)),
                         ),
                       ),
                     ],
@@ -276,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     isExpanded: true,
                     style: const TextStyle(color: Colors.white),
                     items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
-                      return DropdownMenuItem<String>(value: c, child: Text(c));
+                      return DropdownMenuItem<String>(value: c, child: Text(translateCategory(c)));
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
@@ -291,10 +324,13 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+                  child: const Text("ยกเลิก", style: TextStyle(color: Colors.white54)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E2DE2),
+                    foregroundColor: Colors.white,
+                  ),
                   onPressed: () {
                     final double? amount = double.tryParse(amountController.text);
                     if (amount != null && merchantController.text.isNotEmpty) {
@@ -318,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context);
                     }
                   },
-                  child: const Text("Add"),
+                  child: const Text("เพิ่มรายการ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -342,20 +378,20 @@ class _HomeScreenState extends State<HomeScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: const Color(0xFF1E1E2C),
-              title: const Text("Edit Transaction", style: TextStyle(color: Colors.white)),
+              title: const Text("แก้ไขรายการใช้จ่าย", style: TextStyle(color: Colors.white)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: merchantController,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: "Merchant / Title", labelStyle: TextStyle(color: Colors.white54)),
+                    decoration: const InputDecoration(labelText: "ร้านค้า / รายการ", labelStyle: TextStyle(color: Colors.white54)),
                   ),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: "Amount (THB)", labelStyle: TextStyle(color: Colors.white54)),
+                    decoration: const InputDecoration(labelText: "จำนวนเงิน (บาท)", labelStyle: TextStyle(color: Colors.white54)),
                   ),
                   Row(
                     children: [
@@ -363,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: TextField(
                           controller: dateController,
                           style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(labelText: "Date", labelStyle: TextStyle(color: Colors.white54)),
+                          decoration: const InputDecoration(labelText: "วันที่", labelStyle: TextStyle(color: Colors.white54)),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -371,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: TextField(
                           controller: timeController,
                           style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(labelText: "Time", labelStyle: TextStyle(color: Colors.white54)),
+                          decoration: const InputDecoration(labelText: "เวลา", labelStyle: TextStyle(color: Colors.white54)),
                         ),
                       ),
                     ],
@@ -383,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     isExpanded: true,
                     style: const TextStyle(color: Colors.white),
                     items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
-                      return DropdownMenuItem<String>(value: c, child: Text(c));
+                      return DropdownMenuItem<String>(value: c, child: Text(translateCategory(c)));
                     }).toList(),
                     onChanged: (val) {
                       if (val != null) {
@@ -398,10 +434,13 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+                  child: const Text("ยกเลิก", style: TextStyle(color: Colors.white54)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E2DE2),
+                    foregroundColor: Colors.white,
+                  ),
                   onPressed: () {
                     final double? amount = double.tryParse(amountController.text);
                     if (amount != null && merchantController.text.isNotEmpty) {
@@ -425,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context);
                     }
                   },
-                  child: const Text("Save"),
+                  child: const Text("บันทึก", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -441,15 +480,18 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E2C),
-          title: const Text("Delete Log?", style: TextStyle(color: Colors.white)),
-          content: Text("Are you sure you want to delete the expense of ฿${expense.amount.toStringAsFixed(2)} at ${expense.receiverName}?", style: const TextStyle(color: Colors.white70)),
+          title: const Text("ลบรายการจ่ายนี้?", style: TextStyle(color: Colors.white)),
+          content: Text("คุณแน่ใจหรือไม่ที่จะลบรายการใช้จ่ายจำนวน ฿${expense.amount.toStringAsFixed(2)} ที่ร้าน ${expense.receiverName}?", style: const TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+              child: const Text("ยกเลิก", style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5E62)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5E62),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () {
                 setState(() {
                   _expenses.removeWhere((e) => e.id == expense.id);
@@ -457,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _saveExpenses();
                 Navigator.pop(context);
               },
-              child: const Text("Delete"),
+              child: const Text("ลบรายการ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -471,15 +513,18 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E2C),
-          title: const Text("Reset All Data?", style: TextStyle(color: Colors.white)),
-          content: const Text("This will clear all custom expenses and reload the default mock slips. This cannot be undone.", style: TextStyle(color: Colors.white70)),
+          title: const Text("รีเซ็ตข้อมูลทั้งหมด?", style: TextStyle(color: Colors.white)),
+          content: const Text("ระบบจะลบงบประมาณและรายการการเงินที่คุณสร้างขึ้นทั้งหมด และโหลดข้อมูลตัวอย่างดั้งเดิมเข้ามาแทนที่ การกระทำนี้ไม่สามารถกู้คืนได้", style: TextStyle(color: Colors.white70)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white54)),
+              child: const Text("ยกเลิก", style: TextStyle(color: Colors.white54)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF5E62)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5E62),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('saved_expenses');
@@ -493,11 +538,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Data reset to default successfully.")),
+                    const SnackBar(content: Text("รีเซ็ตข้อมูลระบบเสร็จสิ้น")),
                   );
                 }
               },
-              child: const Text("Reset"),
+              child: const Text("รีเซ็ต", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -508,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _exportDataCSV() {
     if (_expenses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No data to export.")),
+        const SnackBar(content: Text("ไม่มีข้อมูลให้ส่งออก")),
       );
       return;
     }
@@ -531,11 +576,11 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E2C),
-          title: const Text("Exported CSV Data", style: TextStyle(color: Colors.white)),
+          title: const Text("ส่งออกข้อมูล CSV", style: TextStyle(color: Colors.white)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Copy the CSV values below to import directly into Excel or sheets:", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              const Text("คัดลอกข้อความ CSV ด้านล่างเพื่อนำไปใช้งานบน Excel หรือ Google Sheets:", style: TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 12),
               Container(
                 constraints: const BoxConstraints(maxHeight: 200),
@@ -555,17 +600,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           actions: [
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E2DE2),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () {
-                // In pure Flutter Web or Android, copy to Clipboard
-                // Imports services package if needed, but standard clipboards can be used
-                // For simplicity, we can do it via WidgetsBinding or just Clipboard
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("CSV copied to clipboard!")),
+                  const SnackBar(content: Text("คัดลอก CSV ลงคลิปบอร์ดแล้ว!")),
                 );
               },
-              child: const Text("Done"),
+              child: const Text("เสร็จสิ้น", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -580,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E2C),
-          title: const Text("Edit Total Budget Pool", style: TextStyle(color: Colors.white)),
+          title: const Text("แก้ไขงบประมาณหลัก", style: TextStyle(color: Colors.white)),
           content: TextField(
             controller: controller,
             keyboardType: TextInputType.number,
@@ -588,17 +633,20 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: const InputDecoration(
               enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
               focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
-              labelText: "Budget (THB)",
+              labelText: "งบประมาณรายเดือน (บาท)",
               labelStyle: TextStyle(color: Colors.white70),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white60)),
+              child: const Text("ยกเลิก", style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E2DE2),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
                 final double? parsedVal = double.tryParse(controller.text);
                 if (parsedVal != null && parsedVal > 0) {
@@ -610,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
                 Navigator.pop(context);
               },
-              child: const Text("Save"),
+              child: const Text("บันทึก", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -625,24 +673,27 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: const Color(0xFF1E1E2C),
-          title: const Text("Connection Settings", style: TextStyle(color: Colors.white)),
+          title: const Text("ตั้งค่าเซิร์ฟเวอร์เชื่อมต่อ", style: TextStyle(color: Colors.white)),
           content: TextField(
             controller: controller,
             style: const TextStyle(color: Colors.white),
             decoration: const InputDecoration(
               enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
               focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
-              labelText: "API Server Base URL",
+              labelText: "ที่อยู่เซิร์ฟเวอร์หลัก (API Base URL)",
               labelStyle: TextStyle(color: Colors.white70),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.white60)),
+              child: const Text("ยกเลิก", style: TextStyle(color: Colors.white60)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF8E2DE2)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8E2DE2),
+                foregroundColor: Colors.white,
+              ),
               onPressed: () {
                 setState(() {
                   _apiBaseUrl = controller.text.trim();
@@ -650,7 +701,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
                 _fetchBackendHealth();
               },
-              child: const Text("Apply"),
+              child: const Text("ตกลง", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -679,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> {
         projectedSpent: _projectedSpent,
         activeProvider: _activeProvider,
         isOcrReady: _isOcrReady,
-        onSelectImage: _showScannerBottomSheet,
+        onSelectImage: _pickAndScanImage,
         onChangeProvider: _navigateToAiSettings,
         onChangeBudget: _showBudgetEditor,
         onAddManual: _showAddManualDialog,

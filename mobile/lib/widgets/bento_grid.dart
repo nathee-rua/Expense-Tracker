@@ -57,7 +57,7 @@ class BentoGrid extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: const [
                     Text(
-                      "Antigravity Finance",
+                      "แอนตี้กราวิตี้ การเงิน",
                       style: TextStyle(
                         color: Colors.white60,
                         fontSize: 14,
@@ -66,7 +66,7 @@ class BentoGrid extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "Premium Dashboard",
+                      "แดชบอร์ดระดับพรีเมียม",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 24,
@@ -108,21 +108,21 @@ class BentoGrid extends StatelessWidget {
               children: [
                 _buildActionButton(
                   icon: Icons.add_circle_outline,
-                  label: "Manual Add",
+                  label: "เพิ่มรายการเอง",
                   color: const Color(0xFF00C6FF),
                   onTap: onAddManual,
                 ),
                 const SizedBox(width: 10),
                 _buildActionButton(
                   icon: Icons.ios_share,
-                  label: "Export CSV",
+                  label: "ส่งออก CSV",
                   color: const Color(0xFF2ECC71),
                   onTap: onExportData,
                 ),
                 const SizedBox(width: 10),
                 _buildActionButton(
                   icon: Icons.restart_alt,
-                  label: "Reset Data",
+                  label: "รีเซ็ตข้อมูล",
                   color: const Color(0xFFFF5E62),
                   onTap: onResetAll,
                 ),
@@ -155,7 +155,7 @@ class BentoGrid extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: const [
                         Text(
-                          "TOTAL BUDGET POOL",
+                          "งบประมาณหลัก",
                           style: TextStyle(
                             color: Colors.white54,
                             fontSize: 11,
@@ -182,7 +182,7 @@ class BentoGrid extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("Expenses", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                              const Text("รายจ่ายรวม", style: TextStyle(color: Colors.white38, fontSize: 11)),
                               const SizedBox(height: 4),
                               Text(
                                 "฿${totalSpent.toStringAsFixed(2)}",
@@ -201,7 +201,7 @@ class BentoGrid extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text("Remaining", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                              const Text("คงเหลือ", style: TextStyle(color: Colors.white38, fontSize: 11)),
                               const SizedBox(height: 4),
                               Text(
                                 "฿${balance.toStringAsFixed(2)}",
@@ -224,7 +224,7 @@ class BentoGrid extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            "Daily Avg: ฿${dailyAverage.toStringAsFixed(1)} • Projected EOM: ฿${projectedSpent.toStringAsFixed(1)}",
+                            "เฉลี่ย/วัน: ฿${dailyAverage.toStringAsFixed(1)} • คาดการณ์สิ้นเดือน: ฿${projectedSpent.toStringAsFixed(1)}",
                             style: TextStyle(
                               color: isOverBudget ? const Color(0xFFFF5E62) : Colors.white54,
                               fontSize: 11,
@@ -244,7 +244,7 @@ class BentoGrid extends StatelessWidget {
                                 Icon(Icons.warning_amber_rounded, color: Color(0xFFFF5E62), size: 10),
                                 SizedBox(width: 2),
                                 Text(
-                                  "OVER BUDGET RISK",
+                                  "เสี่ยงงบเกินเป้า!",
                                   style: TextStyle(color: Color(0xFFFF5E62), fontSize: 8, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -282,7 +282,7 @@ class BentoGrid extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "AI PROVIDER",
+                                "ผู้ให้บริการ AI",
                                 style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
@@ -330,12 +330,12 @@ class BentoGrid extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              "THAI OCR STATE",
+                              "ระบบสแกนสลิป",
                               style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              isOcrReady ? "OFFLINE ACTIVE" : "LOCAL READY",
+                              isOcrReady ? "ทำงานออฟไลน์" : "พร้อมใช้งาน",
                               style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ],

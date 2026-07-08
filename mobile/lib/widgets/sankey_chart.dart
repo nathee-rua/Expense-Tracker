@@ -28,7 +28,7 @@ class SankeyChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Financial Flow (Sankey)",
+            "กระแสการไหลของเงิน (Sankey)",
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -112,7 +112,7 @@ class SankeyPainter extends CustomPainter {
     // Text for Source Node
     _drawText(
       canvas,
-      "Income\n฿${income.toStringAsFixed(0)}",
+      "รายได้\n฿${income.toStringAsFixed(0)}",
       Offset(sourceX + nodeWidth + 6, sourceY + sourceHeight / 2 - 14),
       Colors.white70,
       11,
@@ -192,7 +192,7 @@ class SankeyPainter extends CustomPainter {
       // Text for Destination Node
       _drawText(
         canvas,
-        "${dest.key}\n฿${dest.value.toStringAsFixed(0)}",
+        "${_translateNodeName(dest.key)}\n฿${dest.value.toStringAsFixed(0)}",
         Offset(destX - 8, currentDestY + nodeH / 2 - 14),
         Colors.white.withOpacity(0.85),
         10,
@@ -229,6 +229,19 @@ class SankeyPainter extends CustomPainter {
     }
     
     textPainter.paint(canvas, Offset(x, offset.dy));
+  }
+
+  String _translateNodeName(String key) {
+    switch (key) {
+      case 'Savings/Remaining': return 'คงเหลือ/ออม';
+      case 'Food': return 'อาหาร';
+      case 'Travel': return 'การเดินทาง';
+      case 'Utilities': return 'สาธารณูปโภค';
+      case 'Shopping': return 'ช็อปปิ้ง';
+      case 'Entertainment': return 'ความบันเทิง';
+      case 'Other': return 'อื่นๆ';
+      default: return key;
+    }
   }
 
   Color _getCategoryColor(String category) {

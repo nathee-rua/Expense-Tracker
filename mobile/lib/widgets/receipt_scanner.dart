@@ -11,11 +11,13 @@ import '../models/expense.dart';
 
 class ReceiptScannerBottomSheet extends StatefulWidget {
   final String apiBaseUrl;
+  final XFile? initialFile;
   final Function(Expense) onExpenseParsed;
 
   const ReceiptScannerBottomSheet({
     Key? key,
     required this.apiBaseUrl,
+    this.initialFile,
     required this.onExpenseParsed,
   }) : super(key: key);
 
@@ -46,6 +48,16 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
   String _parsedProvider = '';
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialFile != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleImageSelection(widget.initialFile!);
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _ocrService.dispose();
     _ocrTextController.dispose();
@@ -66,42 +78,49 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
       );
 
       if (pickedFile == null) return;
-
+      await _handleImageSelection(pickedFile);
+    } catch (e) {
       setState(() {
-        _pickedFile = pickedFile;
-        _imageFile = kIsWeb ? null : File(pickedFile.path);
-        _isLoading = true;
-        _statusText = kIsWeb
-            ? "Local OCR not supported on Web. Preparing image upload..."
-            : "Performing offline Thai OCR...";
+        _isLoading = false;
+        _statusText = "เกิดข้อผิดพลาด: ${e.toString()}";
       });
+    }
+  }
 
-      if (kIsWeb) {
-        setState(() {
-          _extractedOcrText = "Web Platform: Local offline OCR is skipped. Please select 'Submit Full Image' to parse using cloud AI.";
-          _ocrTextController.text = _extractedOcrText;
-          _statusText = "Local OCR skipped on Web. Please choose 'Submit Full Image'.";
-          _isLoading = false;
-          _showOcrEditor = true;
-        });
-        return;
-      }
+  Future<void> _handleImageSelection(XFile pickedFile) async {
+    setState(() {
+      _pickedFile = pickedFile;
+      _imageFile = kIsWeb ? null : File(pickedFile.path);
+      _isLoading = true;
+      _statusText = kIsWeb
+          ? "ระบบเว็บไม่รองรับ OCR ออฟไลน์ กำลังเตรียมอัปโหลดภาพไปประมวลผล..."
+          : "กำลังดึงข้อความภาษาไทยออฟไลน์...";
+    });
 
-      // Step 1: Run local OCR
+    if (kIsWeb) {
+      setState(() {
+        _extractedOcrText = "ระบบเว็บ: ข้ามการทำ OCR ท้องถิ่น โปรดกด 'ส่งรูปวิเคราะห์ (Submit Full Image)' เพื่อใช้ AI บนคลาวด์";
+        _ocrTextController.text = _extractedOcrText;
+        _statusText = "ข้าม OCR บนเว็บ โปรดเลือก 'ส่งรูปวิเคราะห์ (Submit Full Image)'";
+        _isLoading = false;
+        _showOcrEditor = true;
+      });
+      return;
+    }
+
+    try {
       final ocrText = await _ocrService.recognizeText(_imageFile!);
-      
-      // Step 2: Check for EMVCo PromptPay QR Code
       final emvcoData = EmvcoParser.parse(ocrText);
-      String status = "OCR complete. Review the text below or proceed.";
+      String status = "สแกนสำเร็จ โปรดตรวจสอบข้อความด้านล่างหรือดำเนินการต่อ";
       if (emvcoData != null) {
-        status = "PromptPay QR code detected! Exact Amount ฿${(emvcoData['amount'] as double).toStringAsFixed(2)} pre-filled.";
+        status = "ตรวจพบ QR Code PromptPay! ดึงยอดเงินสำเร็จ ฿${(emvcoData['amount'] as double).toStringAsFixed(2)}";
       }
 
       setState(() {
         _extractedOcrText = ocrText;
         _ocrTextController.text = ocrText;
         if (ocrText.contains("MissingPluginException") || ocrText.contains("OCR recognition error")) {
-          _statusText = "Local OCR not supported in this environment. Please choose 'Submit Full Image'.";
+          _statusText = "ไม่รองรับการแกะข้อความในอุปกรณ์นี้ โปรดเลือก 'ส่งรูปวิเคราะห์ (Submit Full Image)'";
         } else {
           _statusText = status;
         }
@@ -111,7 +130,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _statusText = "Error: ${e.toString()}";
+        _statusText = "เกิดข้อผิดพลาดในการดึงข้อความ: ${e.toString()}";
       });
     }
   }
@@ -124,14 +143,26 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
     );
   }
 
+  String _translateCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'food': return 'อาหาร';
+      case 'travel': return 'การเดินทาง';
+      case 'utilities': return 'สาธารณูปโภค';
+      case 'shopping': return 'ช็อปปิ้ง';
+      case 'entertainment': return 'ความบันเทิง';
+      case 'other': return 'อื่นๆ';
+      default: return category;
+    }
+  }
+
   Future<void> _submitToServer(bool sendAsImage) async {
     if (_pickedFile == null && !sendAsImage) return;
 
     setState(() {
       _isLoading = true;
       _statusText = sendAsImage 
-          ? "Encoding image & sending base64 to server..." 
-          : "Sending extracted text to server...";
+          ? "กำลังเข้ารหัสรูปภาพและส่งข้อมูลไปยังเซิร์ฟเวอร์..." 
+          : "กำลังส่งข้อความที่อ่านได้ไปยังเซิร์ฟเวอร์...";
     });
 
     try {
@@ -148,7 +179,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
       final model = prefs.getString('active_model') ?? 'gemini-1.5-flash';
       final apiKey = prefs.getString('key_$provider') ?? '';
 
-      // Check EMVCo QR code local parsing first to augment payloads
+      // Check EMVCo QR code local parsing first
       final emvcoData = EmvcoParser.parse(_ocrTextController.text);
 
       final result = await _apiService.parseReceipt(
@@ -168,12 +199,12 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
             ? (emvcoData['amount'] as double) 
             : ((parsedData['amount'] as num?)?.toDouble() ?? 0.0);
 
-        final merchant = parsedData['receiver_name'] ?? parsedData['sender_name'] ?? 'Merchant';
+        final merchant = parsedData['receiver_name'] ?? parsedData['sender_name'] ?? 'ร้านค้า';
         final date = parsedData['transaction_date'] ?? DateTime.now().toIso8601String().substring(0, 10);
         final time = parsedData['transaction_time'] ?? '00:00';
         final category = parsedData['category'] ?? 'Other';
 
-        // Learning loop: check if we have a locally stored custom category mapping for this merchant name
+        // Learning loop
         final merchantKey = merchant.toString().toLowerCase().trim();
         final localPrefCategory = prefs.getString('pref_cat_$merchantKey');
         final resolvedCategory = localPrefCategory ?? category;
@@ -192,13 +223,13 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
       } else {
         setState(() {
           _isLoading = false;
-          _statusText = "Error: ${result['error']}";
+          _statusText = "เกิดข้อผิดพลาด: ${result['error']}";
         });
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _statusText = "Error submitting: ${e.toString()}";
+        _statusText = "เกิดข้อผิดพลาดในการวิเคราะห์: ${e.toString()}";
       });
     }
   }
@@ -207,7 +238,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
     final double? amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a valid amount")),
+        const SnackBar(content: Text("กรุณากรอกจำนวนเงินให้ถูกต้อง")),
       );
       return;
     }
@@ -215,7 +246,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
     final merchantName = _merchantController.text.trim();
     if (merchantName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a merchant name")),
+        const SnackBar(content: Text("กรุณากรอกชื่อร้านค้า")),
       );
       return;
     }
@@ -243,7 +274,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xFF2ECC71),
-          content: Text("Transaction confirmed and logged!"),
+          content: Text("บันทึกธุรกรรมลงบัญชีเรียบร้อยแล้ว!"),
         ),
       );
       Navigator.pop(context);
@@ -298,17 +329,17 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
         ),
         const SizedBox(height: 20),
         const Text(
-          "Verify Auto-Fill Details",
+          "ตรวจสอบและแก้ไขข้อมูลรายจ่าย",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          "AI automatically extracted these fields. Please review before saving.",
+          "AI ได้คำนวณข้อมูลเหล่านี้ โปรดตรวจสอบความถูกต้องและแก้ไขก่อนกดบันทึก",
           style: TextStyle(
             color: Colors.white.withOpacity(0.6),
             fontSize: 11,
@@ -322,7 +353,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
           controller: _merchantController,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
-            labelText: "Merchant / Store",
+            labelText: "ชื่อร้านค้า / รายการ",
             labelStyle: const TextStyle(color: Colors.white38, fontSize: 12),
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
             focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
@@ -336,7 +367,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
-            labelText: "Amount (THB)",
+            labelText: "จำนวนเงิน (บาท)",
             labelStyle: const TextStyle(color: Colors.white38, fontSize: 12),
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
             focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
@@ -352,7 +383,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
                 controller: _dateController,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
-                  labelText: "Date (YYYY-MM-DD)",
+                  labelText: "วันที่ (ปปปป-ดด-วว)",
                   labelStyle: const TextStyle(color: Colors.white38, fontSize: 12),
                   enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
                   focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
@@ -365,7 +396,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
                 controller: _timeController,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
-                  labelText: "Time (HH:MM)",
+                  labelText: "เวลา (ชม:นาที)",
                   labelStyle: const TextStyle(color: Colors.white38, fontSize: 12),
                   enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
                   focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
@@ -377,7 +408,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
         const SizedBox(height: 16),
 
         // Category Selector
-        const Text("Category", style: TextStyle(color: Colors.white38, fontSize: 11)),
+        const Text("หมวดหมู่ค่าใช้จ่าย", style: TextStyle(color: Colors.white38, fontSize: 11)),
         const SizedBox(height: 6),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
@@ -395,7 +426,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
               items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
                 return DropdownMenuItem<String>(
                   value: c,
-                  child: Text(c),
+                  child: Text(_translateCategory(c)),
                 );
               }).toList(),
               onChanged: (val) {
@@ -419,7 +450,7 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
             padding: const EdgeInsets.symmetric(vertical: 14),
           ),
           onPressed: _confirmAndSave,
-          child: const Text("Confirm & Save", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          child: const Text("ยืนยันและบันทึก", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
         ),
         const SizedBox(height: 8),
       ],
@@ -427,7 +458,6 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
   }
 }
 
-// Extracted widget class for code organization
 class MainScannerColumn extends StatelessWidget {
   final File? imageFile;
   final String statusText;
@@ -466,20 +496,20 @@ class MainScannerColumn extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         const Text(
-          "Scan or Upload Receipt",
+          "สแกนหรืออัปโหลดสลิป/ใบเสร็จ",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
-          "Localized offline Thai OCR processes text first, then forwards to cloud AI adapter.",
+          "ระบบจะแกะตัวหนังสือภาษาไทยออฟไลน์บนเครื่องก่อน เพื่อตรวจสอบและส่งต่อไปประมวลผลด้วยคลาวด์ AI",
           style: TextStyle(
             color: Colors.white.withOpacity(0.6),
-            fontSize: 12,
+            fontSize: 11,
           ),
           textAlign: TextAlign.center,
         ),
@@ -490,12 +520,12 @@ class MainScannerColumn extends StatelessWidget {
             children: [
               _buildSelectionButton(
                 icon: Icons.camera_alt,
-                label: "Camera",
+                label: "กล้องถ่ายภาพ",
                 onTap: () => onPickImage(ImageSource.camera),
               ),
               _buildSelectionButton(
                 icon: Icons.photo_library,
-                label: "Gallery",
+                label: "เลือกจากคลังภาพ",
                 onTap: () => onPickImage(ImageSource.gallery),
               ),
             ],
@@ -519,7 +549,7 @@ class MainScannerColumn extends StatelessWidget {
         if (imageFile != null && !isLoading) ...[
           if (showOcrEditor) ...[
             const Text(
-              "Extracted Offline Thai Text",
+              "ข้อความที่ตรวจพบออฟไลน์",
               style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -538,7 +568,7 @@ class MainScannerColumn extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
-                  hintText: "Extracted receipt content will display here...",
+                  hintText: "ข้อความสลิปจะแสดงขึ้นที่นี่...",
                   hintStyle: TextStyle(color: Colors.white30),
                 ),
               ),
@@ -561,7 +591,7 @@ class MainScannerColumn extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     onPressed: () => onSubmitToServer(false),
-                    child: const Text("Process OCR Text"),
+                    child: const Text("ส่งเฉพาะข้อความวิเคราะห์", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -574,7 +604,7 @@ class MainScannerColumn extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     onPressed: () => onSubmitToServer(true),
-                    child: const Text("Submit Full Image"),
+                    child: const Text("ส่งรูปภาพวิเคราะห์ (แนะนำ)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -594,7 +624,7 @@ class MainScannerColumn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 120,
+        width: 130,
         height: 120,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.05),
@@ -608,7 +638,7 @@ class MainScannerColumn extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600),
+              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
         ),
