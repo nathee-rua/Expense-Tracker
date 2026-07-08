@@ -12,12 +12,16 @@ import '../models/expense.dart';
 class ReceiptScannerBottomSheet extends StatefulWidget {
   final String apiBaseUrl;
   final XFile? initialFile;
+  final String? pdfBase64;
+  final String? pdfName;
   final Function(Expense) onExpenseParsed;
 
   const ReceiptScannerBottomSheet({
     Key? key,
     required this.apiBaseUrl,
     this.initialFile,
+    this.pdfBase64,
+    this.pdfName,
     required this.onExpenseParsed,
   }) : super(key: key);
 
@@ -53,6 +57,68 @@ class _ReceiptScannerBottomSheetState extends State<ReceiptScannerBottomSheet> {
     if (widget.initialFile != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _handleImageSelection(widget.initialFile!);
+      });
+    } else if (widget.pdfBase64 != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handlePdfSelection(widget.pdfBase64!, widget.pdfName ?? "Invoice.pdf");
+      });
+    }
+  }
+
+  Future<void> _handlePdfSelection(String base64Data, String filename) async {
+    setState(() {
+      _isLoading = true;
+      _statusText = "กำลังส่งไฟล์ PDF '$filename' ให้ AI ประมวลผล...";
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final provider = prefs.getString('active_provider') ?? 'gemini';
+      final model = prefs.getString('active_model') ?? 'gemini-1.5-flash';
+      final apiKey = prefs.getString('key_$provider') ?? '';
+
+      final result = await _apiService.parseReceipt(
+        data: base64Data,
+        isImage: false,
+        fileType: 'pdf',
+        baseUrl: widget.apiBaseUrl,
+        provider: provider,
+        model: model,
+        apiKey: apiKey.isNotEmpty ? apiKey : null,
+      );
+
+      if (result['success'] == true) {
+        final parsedData = result['data'] ?? {};
+        final double finalAmount = ((parsedData['amount'] as num?)?.toDouble() ?? 0.0);
+        final merchant = parsedData['receiver_name'] ?? parsedData['sender_name'] ?? 'ร้านค้า/ใบเสร็จ PDF';
+        final date = parsedData['transaction_date'] ?? DateTime.now().toIso8601String().substring(0, 10);
+        final time = parsedData['transaction_time'] ?? '00:00';
+        final category = parsedData['category'] ?? 'Other';
+
+        final merchantKey = merchant.toString().toLowerCase().trim();
+        final localPrefCategory = prefs.getString('pref_cat_$merchantKey');
+        final resolvedCategory = localPrefCategory ?? category;
+
+        setState(() {
+          _isLoading = false;
+          _showConfirmForm = true;
+          _merchantController.text = merchant.toString();
+          _amountController.text = finalAmount.toStringAsFixed(2);
+          _dateController.text = date.toString();
+          _timeController.text = time.toString();
+          _selectedCategory = _getValidCategory(resolvedCategory.toString());
+          _parsedProvider = result['provider'] ?? provider;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _statusText = "เกิดข้อผิดพลาด: ${result['error']}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _statusText = "เกิดข้อผิดพลาดในการวิเคราะห์ PDF: ${e.toString()}";
       });
     }
   }

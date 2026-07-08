@@ -230,13 +230,21 @@ app.get('/api/models', async (req, res) => {
 
 // Dynamic AI parsing endpoint
 app.post('/api/parse-receipt', async (req, res) => {
-  const { data, isImage, provider, model, apiKey } = req.body;
+  const { data, isImage, fileType, provider, model, apiKey } = req.body;
   if (!data) {
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
   // Determine active provider, model, and key
   const activeProvider = (provider || process.env.ACTIVE_PROVIDER || 'gemini').toLowerCase();
+
+  // Validate PDF provider restriction
+  if (fileType === 'pdf' && activeProvider !== 'gemini') {
+    return res.status(400).json({
+      success: false,
+      error: "PDF parsing is only supported by Google Gemini. Please switch your active provider to Google Gemini in settings."
+    });
+  }
   
   // Resolve key (passed in body takes precedence over env variables)
   const resolvedKey = apiKey || process.env[`${activeProvider.toUpperCase()}_API_KEY`];
@@ -253,17 +261,22 @@ app.post('/api/parse-receipt', async (req, res) => {
     if (activeProvider === 'gemini') {
       const activeModel = model || 'gemini-1.5-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${resolvedKey}`;
+      
+      let part;
+      if (fileType === 'pdf') {
+        part = { inlineData: { mimeType: "application/pdf", data: data } };
+      } else if (isImage) {
+        part = { inlineData: { mimeType: "image/jpeg", data: data } };
+      } else {
+        part = { text: data };
+      }
+
       const contents = [
         {
-          parts: isImage 
-            ? [
-                { text: SYSTEM_PROMPT },
-                { inlineData: { mimeType: "image/jpeg", data: data } }
-              ]
-            : [
-                { text: SYSTEM_PROMPT },
-                { text: data }
-              ]
+          parts: [
+            { text: SYSTEM_PROMPT },
+            part
+          ]
         }
       ];
 

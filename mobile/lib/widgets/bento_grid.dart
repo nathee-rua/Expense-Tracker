@@ -8,10 +8,11 @@ class BentoGrid extends StatelessWidget {
   final String activeProvider;
   final bool isOcrReady;
   final VoidCallback onSelectImage;
+  final VoidCallback onSelectPdf;
   final VoidCallback onChangeProvider;
   final VoidCallback onChangeBudget;
   final VoidCallback onAddManual;
-  final VoidCallback onResetAll;
+  final VoidCallback onManageCategories;
   final VoidCallback onExportData;
   final Widget chartWidget;
   final Widget sankeyWidget;
@@ -26,10 +27,11 @@ class BentoGrid extends StatelessWidget {
     required this.activeProvider,
     required this.isOcrReady,
     required this.onSelectImage,
+    required this.onSelectPdf,
     required this.onChangeProvider,
     required this.onChangeBudget,
     required this.onAddManual,
-    required this.onResetAll,
+    required this.onManageCategories,
     required this.onExportData,
     required this.chartWidget,
     required this.sankeyWidget,
@@ -49,7 +51,7 @@ class BentoGrid extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome Header & Quick Actions
+            // Welcome Header & Ingestion Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -69,41 +71,70 @@ class BentoGrid extends StatelessWidget {
                       "แดชบอร์ดระดับพรีเมียม",
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
                       ),
                     ),
                   ],
                 ),
-                // Camera Scanner Action Button
-                GestureDetector(
-                  onTap: onSelectImage,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF8E2DE2).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                // Ingestion action buttons (PDF + Image)
+                Row(
+                  children: [
+                    // PDF Upload Button
+                    GestureDetector(
+                      onTap: onSelectPdf,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF5E62), Color(0xFFFF9966)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF5E62).withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                      ],
+                        child: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 20),
+                      ),
                     ),
-                    child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
-                  ),
+                    const SizedBox(width: 10),
+                    // Camera/Image Scanner Action Button
+                    GestureDetector(
+                      onTap: onSelectImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8E2DE2), Color(0xFF4A00E0)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF8E2DE2).withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Quick Actions Bar (Manual Add, Export, Reset)
+            // Quick Actions Bar (Manual Add, Export, Manage Categories)
             Row(
               children: [
                 _buildActionButton(
@@ -121,10 +152,10 @@ class BentoGrid extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 _buildActionButton(
-                  icon: Icons.restart_alt,
-                  label: "รีเซ็ตข้อมูล",
-                  color: const Color(0xFFFF5E62),
-                  onTap: onResetAll,
+                  icon: Icons.category_outlined,
+                  label: "จัดการหมวดหมู่",
+                  color: const Color(0xFFFF9966),
+                  onTap: onManageCategories,
                 ),
               ],
             ),
@@ -335,7 +366,7 @@ class BentoGrid extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              isOcrReady ? "ทำงานออฟไลน์" : "พร้อมใช้งาน",
+                              isOcrReady ? "พร้อมสแกนด่วน" : "พร้อมใช้งาน",
                               style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -389,11 +420,15 @@ class BentoGrid extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+              Icon(icon, color: color, size: 14),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),

@@ -156,18 +156,20 @@ class ExpenseListWidget extends StatelessWidget {
           const SizedBox(width: 8),
 
           // Actions
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white38, size: 16),
-            onPressed: () => onEdit(expense),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          GestureDetector(
+            onTap: () => onEdit(expense),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: const Icon(Icons.edit, color: Colors.white38, size: 15),
+            ),
           ),
-          const SizedBox(width: 6),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFFF5E62), size: 16),
-            onPressed: () => onDelete(expense),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+          const SizedBox(width: 2),
+          GestureDetector(
+            onTap: () => onDelete(expense),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              child: const Icon(Icons.delete_outline, color: Color(0xFFFF5E62), size: 15),
+            ),
           ),
         ],
       ),

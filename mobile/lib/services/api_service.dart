@@ -6,6 +6,7 @@ class ApiService {
   Future<Map<String, dynamic>> parseReceipt({
     required String data,
     required bool isImage,
+    String? fileType,
     required String baseUrl,
     String? provider,
     String? model,
@@ -20,6 +21,7 @@ class ApiService {
         'isImage': isImage,
       };
 
+      if (fileType != null) bodyMap['fileType'] = fileType;
       if (provider != null) bodyMap['provider'] = provider;
       if (model != null) bodyMap['model'] = model;
       if (apiKey != null) bodyMap['apiKey'] = apiKey;

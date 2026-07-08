@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
 import '../widgets/bento_grid.dart';
@@ -27,6 +30,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _activeProvider = "gemini";
   bool _isOcrReady = true;
 
+  // Categories list (Dynamic)
+  List<String> _categories = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'];
+
   // Transaction list (Persisted dynamically)
   final List<Expense> _expenses = [];
 
@@ -44,6 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _totalBudget = prefs.getDouble('total_budget') ?? 15000.00;
     });
+
+    // Load categories
+    final savedCats = prefs.getStringList('saved_categories');
+    if (savedCats != null && savedCats.isNotEmpty) {
+      setState(() {
+        _categories = savedCats;
+      });
+    }
 
     // Load active provider
     await _loadActiveConfig();
@@ -124,6 +138,11 @@ class _HomeScreenState extends State<HomeScreen> {
     await prefs.setStringList('saved_expenses', list);
   }
 
+  Future<void> _saveCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('saved_categories', _categories);
+  }
+
   Future<void> _loadActiveConfig() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -147,10 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_expenses.isEmpty) return 0.0;
     
     final now = DateTime.now();
-    // Count days elapsed in the current month up to today
     final elapsedDays = now.day;
     
-    // Sum total expenses in the current month and year
     final currentMonthExpenses = _expenses.where((e) => 
       e.transactionDate.month == now.month && 
       e.transactionDate.year == now.year
@@ -168,14 +185,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Map<String, double> get _categoryExpenses {
-    final Map<String, double> categories = {
-      'Food': 0.0,
-      'Travel': 0.0,
-      'Utilities': 0.0,
-      'Shopping': 0.0,
-      'Entertainment': 0.0,
-      'Other': 0.0,
-    };
+    final Map<String, double> categories = {};
+    for (var c in _categories) {
+      categories[c] = 0.0;
+    }
 
     for (var e in _expenses) {
       final categoryKey = _getValidCategory(e.category);
@@ -185,10 +198,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _getValidCategory(String category) {
-    final validCategories = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'];
-    return validCategories.firstWhere(
+    return _categories.firstWhere(
       (c) => c.toLowerCase() == category.toLowerCase().trim(),
-      orElse: () => 'Other',
+      orElse: () => _categories.contains('Other') ? 'Other' : _categories.first,
     );
   }
 
@@ -203,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _showScannerBottomSheet([XFile? file]) {
+  void _showScannerBottomSheet([XFile? file, String? pdfBase64, String? pdfName]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -211,6 +223,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) => ReceiptScannerBottomSheet(
         apiBaseUrl: _apiBaseUrl,
         initialFile: file,
+        pdfBase64: pdfBase64,
+        pdfName: pdfName,
         onExpenseParsed: (newExpense) {
           setState(() {
             _expenses.insert(0, newExpense);
@@ -241,6 +255,45 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _pickAndScanPdf() async {
+    try {
+      final FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final PlatformFile file = result.files.first;
+      String base64Data = '';
+
+      if (kIsWeb) {
+        if (file.bytes != null) {
+          base64Data = base64Encode(file.bytes!);
+        }
+      } else {
+        if (file.path != null) {
+          final pdfFile = File(file.path!);
+          final bytes = await pdfFile.readAsBytes();
+          base64Data = base64Encode(bytes);
+        }
+      }
+
+      if (base64Data.isNotEmpty) {
+        _showScannerBottomSheet(null, base64Data, file.name);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("ไม่สามารถอ่านข้อมูลไฟล์ PDF ได้")),
+        );
+      }
+    } catch (e) {
+      print("Error picking PDF: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("เกิดข้อผิดพลาดในการเลือกไฟล์ PDF: $e")),
+      );
+    }
+  }
+
   String translateCategory(String category) {
     switch (category.toLowerCase()) {
       case 'food': return 'อาหาร';
@@ -249,18 +302,111 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'shopping': return 'ช็อปปิ้ง';
       case 'entertainment': return 'ความบันเทิง';
       case 'other': return 'อื่นๆ';
-      default: return category;
+      default: return category; // User custom categories returned as-is
     }
   }
 
   // --- CRUD OPERATIONS ---
+
+  void _showCategoryManagerDialog() {
+    final TextEditingController newCatController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E1E2C),
+              title: const Text("จัดการหมวดหมู่ค่าใช้จ่าย", style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.maxFinite,
+                    maxHeight: 250,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _categories.length,
+                      itemBuilder: (context, idx) {
+                        final catName = _categories[idx];
+                        final isDefault = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].contains(catName);
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(translateCategory(catName), style: const TextStyle(color: Colors.white, fontSize: 14)),
+                          subtitle: isDefault ? const Text("หมวดหมู่เริ่มต้น", style: TextStyle(color: Colors.white38, fontSize: 10)) : null,
+                          trailing: isDefault
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Color(0xFFFF5E62), size: 18),
+                                  onPressed: () {
+                                    setDialogState(() {
+                                      _categories.removeAt(idx);
+                                    });
+                                    setState(() {});
+                                    _saveCategories();
+                                  },
+                                ),
+                        );
+                      },
+                    ),
+                  ),
+                  const Divider(color: Colors.white10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: newCatController,
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          decoration: const InputDecoration(
+                            hintText: "เพิ่มหมวดหมู่ใหม่...",
+                            hintStyle: TextStyle(color: Colors.white24, fontSize: 12),
+                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white10)),
+                            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF8E2DE2))),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Color(0xFF00C6FF)),
+                        onPressed: () {
+                          final newCat = newCatController.text.trim();
+                          if (newCat.isNotEmpty && !_categories.contains(newCat)) {
+                            setDialogState(() {
+                              _categories.add(newCat);
+                              newCatController.clear();
+                            });
+                            setState(() {});
+                            _saveCategories();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8E2DE2),
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("เสร็จสิ้น", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   void _showAddManualDialog() {
     final merchantController = TextEditingController();
     final amountController = TextEditingController();
     final dateController = TextEditingController(text: DateTime.now().toIso8601String().substring(0, 10));
     final timeController = TextEditingController(text: "12:00");
-    String selectedCategory = 'Food';
+    String selectedCategory = _categories.contains('Food') ? 'Food' : _categories.first;
 
     showDialog(
       context: context,
@@ -309,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     value: selectedCategory,
                     isExpanded: true,
                     style: const TextStyle(color: Colors.white),
-                    items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
+                    items: _categories.map((c) {
                       return DropdownMenuItem<String>(value: c, child: Text(translateCategory(c)));
                     }).toList(),
                     onChanged: (val) {
@@ -419,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     value: selectedCategory,
                     isExpanded: true,
                     style: const TextStyle(color: Colors.white),
-                    items: ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'].map((c) {
+                    items: _categories.map((c) {
                       return DropdownMenuItem<String>(value: c, child: Text(translateCategory(c)));
                     }).toList(),
                     onChanged: (val) {
@@ -530,12 +676,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.remove('saved_expenses');
                 await prefs.remove('total_budget');
+                await prefs.remove('saved_categories');
                 setState(() {
                   _expenses.clear();
                   _totalBudget = 15000.00;
+                  _categories = ['Food', 'Travel', 'Utilities', 'Shopping', 'Entertainment', 'Other'];
                   _loadMockData();
                 });
                 _saveExpenses();
+                _saveCategories();
                 if (mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -559,7 +708,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Generate CSV string
     final csvBuffer = StringBuffer();
     csvBuffer.writeln("ID,Date,Time,Merchant,Amount,Category,AIProvider");
     
@@ -571,7 +719,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final csvText = csvBuffer.toString();
 
-    // Show copyable dialog
     showDialog(
       context: context,
       builder: (context) {
@@ -719,8 +866,14 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.restart_alt, color: Colors.white70),
+            onPressed: _resetAllData,
+            tooltip: "รีเซ็ตข้อมูลทั้งหมด",
+          ),
+          IconButton(
             icon: const Icon(Icons.settings, color: Colors.white70),
             onPressed: _showSettingsDialog,
+            tooltip: "ตั้งค่าการเชื่อมต่อ",
           ),
         ],
       ),
@@ -732,10 +885,11 @@ class _HomeScreenState extends State<HomeScreen> {
         activeProvider: _activeProvider,
         isOcrReady: _isOcrReady,
         onSelectImage: _pickAndScanImage,
+        onSelectPdf: _pickAndScanPdf,
         onChangeProvider: _navigateToAiSettings,
         onChangeBudget: _showBudgetEditor,
         onAddManual: _showAddManualDialog,
-        onResetAll: _resetAllData,
+        onManageCategories: _showCategoryManagerDialog,
         onExportData: _exportDataCSV,
         chartWidget: ExpenseBreakdownChart(categoryExpenses: _categoryExpenses),
         sankeyWidget: SankeyChart(income: _totalBudget, categoryExpenses: _categoryExpenses),
