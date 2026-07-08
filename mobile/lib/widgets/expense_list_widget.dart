@@ -119,13 +119,15 @@ class ExpenseListWidget extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
+                 Wrap(
+                  spacing: 6,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text(
                       "$dateStr • ${expense.transactionTime}",
                       style: const TextStyle(color: Colors.white38, fontSize: 10),
                     ),
-                    const SizedBox(width: 6),
                     // Small AI Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
