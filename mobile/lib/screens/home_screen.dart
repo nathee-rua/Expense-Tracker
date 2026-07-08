@@ -18,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // App settings & states
   double _totalBudget = 15000.00;
-  String _apiBaseUrl = "http://localhost:3000"; // Can be changed in settings
+  String _apiBaseUrl = "https://expense-tracker-zeta-two-80.vercel.app"; // Deployed live URL
   String _activeProvider = "gemini";
   bool _isOcrReady = true;
 
