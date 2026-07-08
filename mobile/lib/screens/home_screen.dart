@@ -538,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Text("Copy the CSV values below to import directly into Excel or sheets:", style: TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 12),
               Container(
-                maxHeight: 200,
+                constraints: const BoxConstraints(maxHeight: 200),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.04),
