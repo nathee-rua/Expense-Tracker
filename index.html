@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Expense Tracker - ระบบบันทึกรายจ่ายอัจฉริยะด้วย AI</title>
+    <meta name="description" content="ระบบจัดการและวิเคราะห์รายจ่ายอัจฉริยะ สแกนสลิปธนาคารไทยด้วย AI หลากหลายผู้ให้บริการและจัดหมวดหมู่อัตโนมัติ">
+    <meta name="theme-color" content="#0F0F16">
+    
+    <!-- Google Fonts: Outfit & Kanit for Thai support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- App Container -->
+    <div class="app-container">
+        
+        <!-- Navigation Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <div class="logo-icon"><i class="fa-solid fa-wallet"></i></div>
+                <div class="brand-details">
+                    <h1>Premium Expense Tracker</h1>
+                    <p>ระบบบันทึกและสแกนสลิปอัจฉริยะ</p>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <!-- Health Check Status -->
+                <div class="status-badge" id="health-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">กำลังตรวจสอบ API...</span>
+                </div>
+                
+                <button class="icon-btn" id="open-settings-btn" title="ตั้งค่า AI & ระบบ">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Bento Grid Dashboard -->
+        <main class="dashboard-grid">
+            
+            <!-- Card 1: Total Spent -->
+            <div class="bento-card spent-card">
+                <div class="card-header">
+                    <span class="card-label">ยอดใช้จ่ายเดือนนี้</span>
+                    <i class="fa-solid fa-chart-pie accent-purple"></i>
+                </div>
+                <div class="card-value" id="total-spent-val">฿0.00</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="budget-progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="card-footer" id="budget-percentage-text">ใช้ไปแล้ว 0% ของงบประมาณ</div>
+            </div>
+
+            <!-- Card 2: Remaining Budget -->
+            <div class="bento-card budget-card">
+                <div class="card-header">
+                    <span class="card-label">งบประมาณคงเหลือ</span>
+                    <button class="edit-budget-btn" id="edit-budget-trigger" title="แก้ไขงบประมาณ">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                </div>
+                <div class="card-value text-green" id="remaining-budget-val">฿0.00</div>
+                <div class="card-footer" id="total-budget-text">งบประมาณทั้งหมด: ฿15,000.00</div>
+            </div>
+
+            <!-- Card 3: Forecaster & Trends -->
+            <div class="bento-card forecast-card">
+                <div class="card-header">
+                    <span class="card-label">วิเคราะห์แนวโน้มการจ่าย</span>
+                    <i class="fa-solid fa-arrow-trend-up accent-blue"></i>
+                </div>
+                <div class="forecast-details">
+                    <div class="forecast-item">
+                        <span class="label">เฉลี่ยต่อวัน:</span>
+                        <span class="value" id="daily-average-val">฿0.00</span>
+                    </div>
+                    <div class="forecast-item">
+                        <span class="label">คาดการณ์สิ้นเดือน:</span>
+                        <span class="value" id="projected-spent-val">฿0.00</span>
+                    </div>
+                </div>
+                <div class="card-footer warning-text" id="forecast-warning"></div>
+            </div>
+
+            <!-- Card 4: Active Parser AI -->
+            <div class="bento-card ai-card">
+                <div class="card-header">
+                    <span class="card-label">ผู้ให้บริการ AI ปัจจุบัน</span>
+                    <i class="fa-solid fa-brain accent-green"></i>
+                </div>
+                <div class="ai-details">
+                    <div class="ai-provider-name" id="active-provider-name">Google Gemini</div>
+                    <div class="ai-model-name" id="active-model-name">gemini-1.5-flash</div>
+                </div>
+                <div class="card-footer text-dim">เปิดใช้งาน Multi-fallback อัตโนมัติ</div>
+            </div>
+        </main>
+
+        <!-- Dynamic Action Center -->
+        <section class="action-center">
+            <div class="action-buttons">
+                <!-- Scan Button -->
+                <button class="btn btn-primary" id="scan-receipt-btn">
+                    <i class="fa-solid fa-expand"></i>
+                    <span>สแกนสลิป / ใบเสร็จ</span>
+                </button>
+                <input type="file" id="receipt-file-input" accept="image/*,application/pdf" style="display: none;">
+
+                <!-- Add Manually -->
+                <button class="btn btn-secondary" id="add-manual-btn">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>บันทึกด้วยตนเอง</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Charts Dashboard Section -->
+        <section class="charts-section">
+            <div class="chart-container-wrapper">
+                <h3>สัดส่วนค่าใช้จ่ายรายหมวดหมู่</h3>
+                <div class="chart-box">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container-wrapper">
+                <h3>แนวโน้มการใช้จ่ายรายวัน</h3>
+                <div class="chart-box">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Expense List Section -->
+        <section class="expense-list-section">
+            <div class="section-header">
+                <h2>รายการธุรกรรมทั้งหมด</h2>
+                <div class="filter-controls">
+                    <!-- Search Input -->
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="search-input" placeholder="ค้นหาตามชื่อร้าน หรือรายการ...">
+                    </div>
+                    <!-- Category Select -->
+                    <select id="category-filter">
+                        <option value="all">ทุกหมวดหมู่</option>
+                        <!-- Dynamic categories will be loaded here -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- Expense List Items Container -->
+            <div class="expense-list" id="expense-list-container">
+                <!-- Dynamic Items will be appended here -->
+                <div class="no-data-placeholder">
+                    <i class="fa-solid fa-receipt"></i>
+                    <p>ยังไม่มีรายการใช้จ่ายบันทึกไว้ในเบราว์เซอร์นี้</p>
+                </div>
+            </div>
+        </section>
+
+    </div> <!-- /App Container -->
+
+    <!-- ================= MODALS & OVERLAYS ================= -->
+
+    <!-- 1. AI Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-gears"></i> ตั้งค่า AI & ระบบ</h2>
+                <button class="close-modal-btn" id="close-settings-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                
+                <!-- API Connection URL -->
+                <div class="form-group">
+                    <label for="settings-api-url">ที่อยู่ Backend API (URL):</label>
+                    <input type="url" id="settings-api-url" placeholder="https://..." value="">
+                    <p class="form-help-text">ใช้ค่าเริ่มต้นของเซิร์ฟเวอร์หลัก หรือแก้ไขหากติดตั้ง Backend แยกต่างหาก</p>
+                </div>
+
+                <hr class="modal-divider">
+
+                <!-- AI Provider Configurations -->
+                <h3>ข้อมูลผู้ให้บริการ AI & API Key</h3>
+                
+                <!-- Provider Select -->
+                <div class="form-group">
+                    <label for="settings-active-provider">ผู้ให้บริการที่ใช้งาน (Active Provider):</label>
+                    <select id="settings-active-provider">
+                        <!-- Filled dynamically -->
+                    </select>
+                </div>
+
+                <!-- Model Select -->
+                <div class="form-group">
+                    <label for="settings-active-model">โมเดล AI ที่ต้องการ (Model):</label>
+                    <div class="select-loading-wrapper">
+                        <select id="settings-active-model">
+                            <!-- Filled dynamically based on keys / defaults -->
+                        </select>
+                        <span class="inline-loader" id="model-loader" style="display: none;">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- API Key Manager (Tab-based accordion list) -->
+                <div class="api-keys-manager" id="api-keys-accordion">
+                    <!-- Dynamic Accordions per provider will be generated here -->
+                </div>
+
+                <div class="connection-test-container">
+                    <button class="btn btn-secondary btn-full" id="test-connection-btn">
+                        <i class="fa-solid fa-network-wired"></i> ทดสอบการเชื่อมต่อโมเดล AI
+                    </button>
+                    <div class="test-result-box" id="test-result-box" style="display: none;"></div>
+                </div>
+
+                <hr class="modal-divider">
+
+                <!-- Budget Setting -->
+                <h3>ตั้งค่าระบบบัญชี</h3>
+                <div class="form-group">
+                    <label for="settings-budget">งบประมาณรายเดือน (บาท):</label>
+                    <input type="number" id="settings-budget" placeholder="15000">
+                </div>
+
+                <!-- Custom Categories Manager -->
+                <div class="form-group">
+                    <label>จัดการหมวดหมู่รายจ่าย:</label>
+                    <div class="category-creator">
+                        <input type="text" id="new-category-input" placeholder="เพิ่มหมวดหมู่ใหม่ เช่น ของใช้ส่วนตัว...">
+                        <button class="btn btn-secondary" id="add-category-btn"><i class="fa-solid fa-plus"></i> เพิ่ม</button>
+                    </div>
+                    <div class="category-tags-list" id="category-tags-container">
+                        <!-- Dynamic category tags with delete buttons -->
+                    </div>
+                </div>
+
+                <hr class="modal-divider">
+
+                <!-- Data Backup -->
+                <h3>สำรองข้อมูล</h3>
+                <div class="backup-actions">
+                    <button class="btn btn-secondary" id="export-data-btn">
+                        <i class="fa-solid fa-file-export"></i> ส่งออกข้อมูลเป็น JSON
+                    </button>
+                    <button class="btn btn-secondary" id="import-data-trigger">
+                        <i class="fa-solid fa-file-import"></i> นำเข้าข้อมูล JSON
+                    </button>
+                    <input type="file" id="import-data-file" accept=".json" style="display: none;">
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-settings-btn">ยกเลิก</button>
+                <button class="btn btn-primary" id="save-settings-btn">บันทึกการตั้งค่า</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Manual Add / Edit Expense Modal -->
+    <div class="modal-overlay" id="expense-modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2 id="expense-modal-title">บันทึกรายจ่ายรายการใหม่</h2>
+                <button class="close-modal-btn" id="close-expense-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="expense-form">
+                    <input type="hidden" id="form-expense-id">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="form-date">วันที่ทำรายการ <span class="required">*</span></label>
+                            <input type="date" id="form-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="form-time">เวลาทำรายการ</label>
+                            <input type="time" id="form-time" value="00:00">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="form-amount">จำนวนเงิน (บาท) <span class="required">*</span></label>
+                        <input type="number" id="form-amount" step="0.01" required placeholder="0.00">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="form-receiver">ผู้รับเงิน / ร้านค้า</label>
+                        <input type="text" id="form-receiver" placeholder="ระบุชื่อร้านค้าหรือผู้รับโอน...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="form-category">หมวดหมู่ค่าใช้จ่าย</label>
+                        <select id="form-category">
+                            <!-- Filled dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>รายการสินค้า / รายการย่อย:</label>
+                        <div class="items-editor-container" id="form-items-container">
+                            <!-- Dynamic rows of items will go here -->
+                        </div>
+                        <button type="button" class="add-item-row-btn" id="add-item-row-trigger">
+                            <i class="fa-solid fa-plus"></i> เพิ่มรายการสินค้าย่อย
+                        </button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="form-bank">ธนาคาร (ถ้ามี)</label>
+                        <input type="text" id="form-bank" placeholder="เช่น กสิกรไทย, ไทยพาณิชย์...">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="form-raw-ocr">ข้อความ OCR ดิบ (ถ้ามี)</label>
+                        <textarea id="form-raw-ocr" placeholder="ข้อมูลข้อความสลิปดิบ..." rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-expense-btn">ยกเลิก</button>
+                <button class="btn btn-primary" id="save-expense-btn" form="expense-form">บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Dynamic AI Loading Overlay -->
+    <div class="loading-overlay" id="ai-loading-overlay">
+        <div class="loading-card glass-card">
+            <div class="brain-pulse-icon">
+                <i class="fa-solid fa-brain"></i>
+            </div>
+            <h3>กำลังวิเคราะห์ข้อมูลด้วย AI...</h3>
+            <p>กรุณารอประมาณ 5-15 วินาที ระบบกำลังแยกแยะ ข้อมูลสลิป จำนวนเงิน วันเวลา ร้านค้า และหมวดหมู่อย่างละเอียด</p>
+            <div class="loading-bar-wrapper">
+                <div class="loading-bar-progress"></div>
+            </div>
+            <div class="loading-step-text" id="loading-step-text">กำลังสแกนและแปลงไฟล์...</div>
+        </div>
+    </div>
+
+    <!-- 4. Budget Editor Quick Modal -->
+    <div class="modal-overlay" id="budget-quick-modal">
+        <div class="modal-content glass-card modal-small">
+            <div class="modal-header">
+                <h2>แก้ไขงบประมาณรายเดือน</h2>
+                <button class="close-modal-btn" id="close-budget-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="quick-budget-input">กำหนดงบประมาณใหม่ (บาท):</label>
+                    <input type="number" id="quick-budget-input" value="15000" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-budget-btn">ยกเลิก</button>
+                <button class="btn btn-primary" id="save-budget-btn">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
